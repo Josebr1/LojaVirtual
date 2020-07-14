@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using LojaVirtual.Models;
+using LojaVirtual.Libraries.Email;
+using System.ComponentModel.DataAnnotations;
+using System.Text;
 
 namespace LojaVirtual.Controllers
 {
@@ -28,11 +31,42 @@ namespace LojaVirtual.Controllers
         
         public IActionResult ContatoAcao() {
 
-            string nome = HttpContext.Request.Form["nome"];
-            string email = HttpContext.Request.Form["email"];
-            string texto = HttpContext.Request.Form["texto"];
+            try 
+            {
+                var contato = new Contato();
 
-            return new ContentResult() { Content = "Dados recebidos com sucesso!" };
+                contato.Nome= HttpContext.Request.Form["nome"];
+                contato.Email = HttpContext.Request.Form["email"];
+                contato.Texto = HttpContext.Request.Form["texto"];
+
+                
+                
+                var listaMensagens = new List<ValidationResult>();
+                var context = new ValidationContext(contato);
+                
+                bool isValid = Validator.TryValidateObject(contato, context, listaMensagens, true);
+                
+                if(isValid)
+                {
+                    ContatoEmail.EnviarContatoPorEmail(contato);
+                    ViewData["MSG_S"] = "Mensagem de contato enviada com sucesso!";
+                } else 
+                {
+                    StringBuilder sb = new StringBuilder();
+                    foreach(var texto in listaMensagens) 
+                    {
+                        sb.Append(texto.ErrorMessage + "<br />");
+                    }
+                    ViewData["MSG_E"] = sb.ToString();
+                    ViewData["CONTATO"] = contato;
+                }
+
+                
+            } catch(Exception ex) 
+            {
+                ViewData["MSG_E"] = "Opps! Tivemos um erro, tente novamente mais tarde!";
+            }
+            return View("Contato");
         }
 
         public IActionResult Login() {
